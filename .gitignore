@@ -33,14 +33,10 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
-# Google Cloud credentials
+# Google Cloud credentials (sensitive!)
 google-credentials.json
-*-credentials.json
-*.json
-!package.json
-!package-lock.json
-!tsconfig.json
-!next.config.ts
+webdev-food-app-*.json
+*.json.key
 
 # vercel
 .vercel
