@@ -6,6 +6,97 @@
 import { PlacesApiResponse, Restaurant, UserLocation } from '@/types';
 
 /**
+ * Restaurant details from Google Places Details API
+ */
+export interface RestaurantDetails {
+  name: string;
+  place_id: string;
+  rating?: number;
+  price_level?: number;
+  address: string;
+  editorial_summary?: string;
+  opening_hours?: {
+    open_now?: boolean;
+    weekday_text?: string[];
+  };
+  geometry?: {
+    location: {
+      lat: number;
+      lng: number;
+    };
+  };
+  website?: string;
+  formatted_phone_number?: string;
+  photos?: string[];
+  user_ratings_total?: number;
+}
+
+/**
+ * Fetches detailed information about a specific restaurant
+ * @param placeId - Google Place ID
+ * @param apiKey - Google Places API key
+ * @returns Promise with detailed restaurant information
+ */
+export async function getRestaurantDetails(
+  placeId: string,
+  apiKey: string
+): Promise<RestaurantDetails> {
+  try {
+    const placesApiUrl = `https://places.googleapis.com/v1/places/${placeId}`;
+    
+    const response = await fetch(placesApiUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': apiKey,
+        'X-Goog-FieldMask': 'id,displayName,formattedAddress,editorialSummary,priceLevel,currentOpeningHours,location,websiteUri,internationalPhoneNumber,photos,rating,userRatingCount'
+      }
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`Places Details API error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`);
+    }
+
+    const data = await response.json();
+
+    // Get photo URL if available
+    let photoUrls: string[] = [];
+    if (data.photos && data.photos.length > 0) {
+      photoUrls = data.photos.slice(0, 3).map((photo: any) => {
+        return `https://places.googleapis.com/v1/${photo.name}/media?maxHeightPx=400&maxWidthPx=400&key=${apiKey}`;
+      });
+    }
+
+    return {
+      name: data.displayName?.text || 'Unknown Restaurant',
+      place_id: placeId,
+      rating: data.rating,
+      price_level: data.priceLevel ? parsePriceLevel(data.priceLevel) : undefined,
+      address: data.formattedAddress || 'Address not available',
+      editorial_summary: data.editorialSummary?.text,
+      opening_hours: data.currentOpeningHours ? {
+        open_now: data.currentOpeningHours.openNow,
+        weekday_text: data.currentOpeningHours.weekdayDescriptions
+      } : undefined,
+      geometry: data.location ? {
+        location: {
+          lat: data.location.latitude,
+          lng: data.location.longitude
+        }
+      } : undefined,
+      website: data.websiteUri,
+      formatted_phone_number: data.internationalPhoneNumber,
+      photos: photoUrls,
+      user_ratings_total: data.userRatingCount
+    };
+  } catch (error) {
+    console.error('Error fetching restaurant details:', error);
+    throw error;
+  }
+}
+
+/**
  * Searches for restaurants serving a specific food using Google Places API (New)
  * @param foodName - Name of the food to search for
  * @param location - User's location coordinates
