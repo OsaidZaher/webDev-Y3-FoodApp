@@ -1,23 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRestaurantDetails } from '@/lib/google-places';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
 
 /**
  * GET /api/restaurant-details?placeId=xxx
  * Fetches detailed information about a specific restaurant
+ * This endpoint is publicly accessible to allow guest users to view details
  */
 export async function GET(request: NextRequest) {
   try {
-    // Check authentication
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
     const { searchParams } = new URL(request.url);
     const placeId = searchParams.get('placeId');
 

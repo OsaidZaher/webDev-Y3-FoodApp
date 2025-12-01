@@ -1,23 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { searchRestaurants } from '@/lib/google-places';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
 
 /**
  * POST /api/search-restaurants
  * Searches for restaurants based on food name and user location
+ * This endpoint is publicly accessible to allow guest users to search
  */
 export async function POST(request: NextRequest) {
   try {
-    // Check authentication
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
     const body = await request.json();
     const { foodName, location, radius } = body;
 

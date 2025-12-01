@@ -26,9 +26,9 @@ const MIN_UNIQUE_ENTRIES = 10;
 /**
  * Check if there's enough data to generate recommendations
  */
-export function hasEnoughDataForRecommendations(): boolean {
-  const classifications = getClassificationHistory();
-  const restaurants = getViewedRestaurantsHistory();
+export function hasEnoughDataForRecommendations(userId?: string): boolean {
+  const classifications = getClassificationHistory(userId);
+  const restaurants = getViewedRestaurantsHistory(userId);
   
   const totalUnique = classifications.length + restaurants.length;
   return totalUnique >= MIN_UNIQUE_ENTRIES;
@@ -37,9 +37,9 @@ export function hasEnoughDataForRecommendations(): boolean {
 /**
  * Get insights from user history
  */
-export function getUserInsights(): RecommendationInsights {
-  const classifications = getClassificationHistory();
-  const restaurants = getViewedRestaurantsHistory();
+export function getUserInsights(userId?: string): RecommendationInsights {
+  const classifications = getClassificationHistory(userId);
+  const restaurants = getViewedRestaurantsHistory(userId);
   
   const totalUnique = classifications.length + restaurants.length;
   
@@ -92,8 +92,8 @@ export function getUserInsights(): RecommendationInsights {
 /**
  * Generate restaurant recommendations based on user history
  */
-export function generateRecommendations(): RestaurantRecommendation[] {
-  const insights = getUserInsights();
+export function generateRecommendations(userId?: string): RestaurantRecommendation[] {
+  const insights = getUserInsights(userId);
   
   if (!insights.hasEnoughData) {
     return [];
@@ -205,8 +205,8 @@ function getCuisineVariation(foodName: string): string | null {
 /**
  * Get personalized search queries based on history
  */
-export function getPersonalizedSearchQueries(): string[] {
-  const insights = getUserInsights();
+export function getPersonalizedSearchQueries(userId?: string): string[] {
+  const insights = getUserInsights(userId);
   
   if (!insights.hasEnoughData) {
     return [];
@@ -230,9 +230,9 @@ export interface AIFoodRecommendation {
 /**
  * Fetch AI-powered recommendations from OpenAI
  */
-export async function fetchAIRecommendations(): Promise<AIFoodRecommendation[]> {
+export async function fetchAIRecommendations(userId?: string): Promise<AIFoodRecommendation[]> {
   try {
-    const insights = getUserInsights();
+    const insights = getUserInsights(userId);
     
     if (!insights.hasEnoughData) {
       return [];

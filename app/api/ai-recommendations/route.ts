@@ -92,12 +92,34 @@ Make recommendations diverse but relevant. Include both close matches and intere
       throw new Error('No response from OpenAI');
     }
 
-    // Parse the JSON response
+    // Parse the JSON response - handle markdown code blocks
     let recommendations;
     try {
-      recommendations = JSON.parse(responseText);
+      // Remove markdown code blocks if present
+      let cleanedResponse = responseText.trim();
+      if (cleanedResponse.startsWith('```json')) {
+        cleanedResponse = cleanedResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+      } else if (cleanedResponse.startsWith('```')) {
+        cleanedResponse = cleanedResponse.replace(/^```\s*/, '').replace(/\s*```$/, '');
+      }
+      
+      recommendations = JSON.parse(cleanedResponse);
+      
+      // Validate the structure
+      if (!Array.isArray(recommendations)) {
+        throw new Error('Response must be an array');
+      }
+      
+      // Validate each recommendation has required fields
+      recommendations.forEach((rec, index) => {
+        if (!rec.foodName || !rec.reason || !rec.cuisineType || typeof rec.confidence !== 'number') {
+          throw new Error(`Invalid recommendation format at index ${index}`);
+        }
+      });
+      
     } catch (parseError) {
       console.error('Failed to parse OpenAI response:', responseText);
+      console.error('Parse error details:', parseError);
       throw new Error('Invalid response format from AI');
     }
 

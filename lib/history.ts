@@ -1,5 +1,6 @@
 /**
  * Local Storage Utility for History Tracking
+ * User-specific history using userId in storage keys
  */
 
 export interface FoodClassification {
@@ -22,16 +23,29 @@ export interface ViewedRestaurant {
   timestamp: number;
 }
 
-const CLASSIFICATIONS_KEY = 'food_classifications_history';
-const RESTAURANTS_KEY = 'viewed_restaurants_history';
 const MAX_ITEMS = 50; // Maximum items to store
+
+/**
+ * Get user-specific storage key
+ */
+function getStorageKey(baseKey: string, userId?: string): string {
+  if (!userId) {
+    // Fallback to a temporary key if no user is logged in
+    return `${baseKey}_guest`;
+  }
+  return `${baseKey}_${userId}`;
+}
 
 /**
  * Save a food classification to history
  */
-export function saveClassification(classification: Omit<FoodClassification, 'id' | 'timestamp'>): void {
+export function saveClassification(
+  classification: Omit<FoodClassification, 'id' | 'timestamp'>,
+  userId?: string
+): void {
   try {
-    const history = getClassificationHistory();
+    const key = getStorageKey('food_classifications_history', userId);
+    const history = getClassificationHistory(userId);
     const newItem: FoodClassification = {
       ...classification,
       id: `classification-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -40,7 +54,7 @@ export function saveClassification(classification: Omit<FoodClassification, 'id'
 
     // Add to beginning of array and limit size
     const updated = [newItem, ...history].slice(0, MAX_ITEMS);
-    localStorage.setItem(CLASSIFICATIONS_KEY, JSON.stringify(updated));
+    localStorage.setItem(key, JSON.stringify(updated));
   } catch (error) {
     console.error('Error saving classification to history:', error);
   }
@@ -49,9 +63,10 @@ export function saveClassification(classification: Omit<FoodClassification, 'id'
 /**
  * Get all food classification history
  */
-export function getClassificationHistory(): FoodClassification[] {
+export function getClassificationHistory(userId?: string): FoodClassification[] {
   try {
-    const data = localStorage.getItem(CLASSIFICATIONS_KEY);
+    const key = getStorageKey('food_classifications_history', userId);
+    const data = localStorage.getItem(key);
     return data ? JSON.parse(data) : [];
   } catch (error) {
     console.error('Error reading classification history:', error);
@@ -62,9 +77,13 @@ export function getClassificationHistory(): FoodClassification[] {
 /**
  * Save a viewed restaurant to history
  */
-export function saveViewedRestaurant(restaurant: Omit<ViewedRestaurant, 'id' | 'timestamp'>): void {
+export function saveViewedRestaurant(
+  restaurant: Omit<ViewedRestaurant, 'id' | 'timestamp'>,
+  userId?: string
+): void {
   try {
-    const history = getViewedRestaurantsHistory();
+    const key = getStorageKey('viewed_restaurants_history', userId);
+    const history = getViewedRestaurantsHistory(userId);
     
     // Check if restaurant already exists (by place_id)
     const existingIndex = history.findIndex(r => r.place_id === restaurant.place_id);
@@ -86,7 +105,7 @@ export function saveViewedRestaurant(restaurant: Omit<ViewedRestaurant, 'id' | '
 
     // Limit size
     updated = updated.slice(0, MAX_ITEMS);
-    localStorage.setItem(RESTAURANTS_KEY, JSON.stringify(updated));
+    localStorage.setItem(key, JSON.stringify(updated));
   } catch (error) {
     console.error('Error saving restaurant to history:', error);
   }
@@ -95,9 +114,10 @@ export function saveViewedRestaurant(restaurant: Omit<ViewedRestaurant, 'id' | '
 /**
  * Get all viewed restaurants history
  */
-export function getViewedRestaurantsHistory(): ViewedRestaurant[] {
+export function getViewedRestaurantsHistory(userId?: string): ViewedRestaurant[] {
   try {
-    const data = localStorage.getItem(RESTAURANTS_KEY);
+    const key = getStorageKey('viewed_restaurants_history', userId);
+    const data = localStorage.getItem(key);
     return data ? JSON.parse(data) : [];
   } catch (error) {
     console.error('Error reading restaurant history:', error);
@@ -108,9 +128,10 @@ export function getViewedRestaurantsHistory(): ViewedRestaurant[] {
 /**
  * Clear all classification history
  */
-export function clearClassificationHistory(): void {
+export function clearClassificationHistory(userId?: string): void {
   try {
-    localStorage.removeItem(CLASSIFICATIONS_KEY);
+    const key = getStorageKey('food_classifications_history', userId);
+    localStorage.removeItem(key);
   } catch (error) {
     console.error('Error clearing classification history:', error);
   }
@@ -119,9 +140,10 @@ export function clearClassificationHistory(): void {
 /**
  * Clear all restaurant history
  */
-export function clearRestaurantHistory(): void {
+export function clearRestaurantHistory(userId?: string): void {
   try {
-    localStorage.removeItem(RESTAURANTS_KEY);
+    const key = getStorageKey('viewed_restaurants_history', userId);
+    localStorage.removeItem(key);
   } catch (error) {
     console.error('Error clearing restaurant history:', error);
   }
@@ -130,19 +152,20 @@ export function clearRestaurantHistory(): void {
 /**
  * Clear all history
  */
-export function clearAllHistory(): void {
-  clearClassificationHistory();
-  clearRestaurantHistory();
+export function clearAllHistory(userId?: string): void {
+  clearClassificationHistory(userId);
+  clearRestaurantHistory(userId);
 }
 
 /**
  * Delete a specific classification by id
  */
-export function deleteClassification(id: string): void {
+export function deleteClassification(id: string, userId?: string): void {
   try {
-    const history = getClassificationHistory();
+    const key = getStorageKey('food_classifications_history', userId);
+    const history = getClassificationHistory(userId);
     const updated = history.filter(item => item.id !== id);
-    localStorage.setItem(CLASSIFICATIONS_KEY, JSON.stringify(updated));
+    localStorage.setItem(key, JSON.stringify(updated));
   } catch (error) {
     console.error('Error deleting classification:', error);
   }
@@ -151,11 +174,12 @@ export function deleteClassification(id: string): void {
 /**
  * Delete a specific restaurant by id
  */
-export function deleteViewedRestaurant(id: string): void {
+export function deleteViewedRestaurant(id: string, userId?: string): void {
   try {
-    const history = getViewedRestaurantsHistory();
+    const key = getStorageKey('viewed_restaurants_history', userId);
+    const history = getViewedRestaurantsHistory(userId);
     const updated = history.filter(item => item.id !== id);
-    localStorage.setItem(RESTAURANTS_KEY, JSON.stringify(updated));
+    localStorage.setItem(key, JSON.stringify(updated));
   } catch (error) {
     console.error('Error deleting restaurant:', error);
   }
