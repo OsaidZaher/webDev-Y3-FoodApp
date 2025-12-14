@@ -97,39 +97,66 @@ export async function getRestaurantDetails(
 }
 
 /**
+ * Search result with pagination info
+ */
+export interface SearchRestaurantsResult {
+  restaurants: Restaurant[];
+  nextPageToken?: string;
+  totalResults: number;
+}
+
+/**
  * Searches for restaurants serving a specific food using Google Places API (New)
  * @param foodName - Name of the food to search for
  * @param location - User's location coordinates
  * @param apiKey - Google Places API key
  * @param radius - Search radius in meters (default: 5000)
- * @returns Promise with array of restaurants
+ * @param pageSize - Number of results per page (default: 15, max: 20)
+ * @param pageToken - Token for fetching next page of results
+ * @returns Promise with restaurants and pagination info
  */
 export async function searchRestaurants(
   foodName: string,
   location: UserLocation,
   apiKey: string,
-  radius: number = 5000
-): Promise<Restaurant[]> {
+  radius: number = 5000,
+  pageSize: number = 15,
+  pageToken?: string
+): Promise<SearchRestaurantsResult> {
   try {
     const query = `${foodName} restaurant`;
     
     // Using the NEW Places API (Text Search)
     const placesApiUrl = 'https://places.googleapis.com/v1/places:searchText';
     
-    const requestBody = {
+    // Convert radius to a bounding box for locationRestriction (rectangle format)
+    // 1 degree latitude ≈ 111km, 1 degree longitude varies by latitude
+    const radiusInKm = Math.min(radius, 50000) / 1000; // Cap at 50km
+    const latDelta = radiusInKm / 111; // Approximate degrees
+    const lngDelta = radiusInKm / (111 * Math.cos(location.lat * Math.PI / 180));
+    
+    const requestBody: any = {
       textQuery: query,
-      locationBias: {
-        circle: {
-          center: {
-            latitude: location.lat,
-            longitude: location.lng
+      locationRestriction: {
+        rectangle: {
+          low: {
+            latitude: location.lat - latDelta,
+            longitude: location.lng - lngDelta
           },
-          radius: radius
+          high: {
+            latitude: location.lat + latDelta,
+            longitude: location.lng + lngDelta
+          }
         }
       },
-      maxResultCount: 20,
+      maxResultCount: Math.min(pageSize, 20), // API max is 20
       languageCode: 'en'
     };
+
+    // Add page token if provided for pagination
+    if (pageToken) {
+      requestBody.pageToken = pageToken;
+    }
 
     const response = await fetch(placesApiUrl, {
       method: 'POST',
@@ -149,7 +176,7 @@ export async function searchRestaurants(
     const data = await response.json();
 
     if (!data.places || data.places.length === 0) {
-      return [];
+      return { restaurants: [], totalResults: 0 };
     }
 
     // Transform new Places API results to our Restaurant interface
@@ -188,7 +215,11 @@ export async function searchRestaurants(
       };
     });
 
-    return restaurants;
+    return {
+      restaurants,
+      nextPageToken: data.nextPageToken,
+      totalResults: restaurants.length
+    };
   } catch (error) {
     console.error('Error searching restaurants:', error);
     throw error;

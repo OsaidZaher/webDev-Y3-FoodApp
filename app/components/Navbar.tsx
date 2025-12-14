@@ -86,6 +86,16 @@ const SparklesIcon = ({ className }: { className?: string }) => (
   </svg>
 )
 
+const BookOpenIcon = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M12 7v14M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"
+    />
+  </svg>
+)
+
 export default function Navbar() {
   const pathname = usePathname()
   const { data: session } = useSession()
@@ -93,6 +103,7 @@ export default function Navbar() {
   const authenticatedNavItems = [
     { name: "Home", path: "/dashboard", icon: HomeIcon },
     { name: "Search", path: "/search", icon: SearchIcon },
+    { name: "Recipe", path: "/recipe", icon: BookOpenIcon },
     { name: "Recommendations", path: "/recommendations", icon: StarIcon },
     { name: "History", path: "/history", icon: HistoryIcon },
     { name: "Account", path: "/account", icon: UserIcon },

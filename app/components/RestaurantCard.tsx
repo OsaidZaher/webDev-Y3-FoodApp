@@ -108,8 +108,8 @@ export default function RestaurantCard({ restaurant }: RestaurantCardProps) {
         {[...Array(emptyStars)].map((_, i) => (
           <StarIcon key={`empty-${i}`} className="w-4 h-4 text-white/20" />
         ))}
-        <span className="text-sm text-white/70 ml-1 font-medium">{rating.toFixed(1)}</span>
-        {user_ratings_total && <span className="text-xs text-white/50 ml-1">({user_ratings_total})</span>}
+        <span className="text-sm text-slate-300 ml-1 font-medium">{rating.toFixed(1)}</span>
+        {user_ratings_total && <span className="text-xs text-slate-400 ml-1">({user_ratings_total})</span>}
       </div>
     )
   }
@@ -142,7 +142,7 @@ export default function RestaurantCard({ restaurant }: RestaurantCardProps) {
             {distance !== undefined && (
               <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-md rounded-full px-3 py-1.5 flex items-center gap-1.5 border border-white/10">
                 <MapPinIcon className="w-3.5 h-3.5 text-violet-400" />
-                <span className="text-sm font-medium text-white">{formatDistance(distance)}</span>
+                <span className="text-sm font-medium text-slate-200">{formatDistance(distance)}</span>
               </div>
             )}
 
@@ -164,7 +164,7 @@ export default function RestaurantCard({ restaurant }: RestaurantCardProps) {
           {/* Restaurant Info */}
           <div className="p-5">
             {/* Name */}
-            <h3 className="text-xl font-bold text-white mb-3 line-clamp-1 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-violet-400 group-hover:to-fuchsia-400 transition-all duration-300">
+            <h3 className="text-xl font-bold text-slate-200 mb-3 line-clamp-1 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-violet-400 group-hover:to-fuchsia-400 transition-all duration-300">
               {name}
             </h3>
 
@@ -177,7 +177,7 @@ export default function RestaurantCard({ restaurant }: RestaurantCardProps) {
             </div>
 
             {/* Address */}
-            <div className="flex items-start gap-2 text-white/50 text-sm mb-5">
+            <div className="flex items-start gap-2 text-slate-400 text-sm mb-5">
               <MapPinIcon className="w-4 h-4 mt-0.5 flex-shrink-0 text-violet-400/70" />
               <p className="line-clamp-2">{address}</p>
             </div>

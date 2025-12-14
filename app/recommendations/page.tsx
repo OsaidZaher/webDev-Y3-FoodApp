@@ -204,9 +204,14 @@ export default function RecommendationsPage() {
   const [hasEnoughData, setHasEnoughData] = useState(false)
   const [restaurants, setRestaurants] = useState<Restaurant[]>([])
   const [loading, setLoading] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [aiLoading, setAiLoading] = useState(false)
   const [selectedRecommendation, setSelectedRecommendation] = useState<string | null>(null)
   const [hoveredCard, setHoveredCard] = useState<number | null>(null)
+  const [nextPageToken, setNextPageToken] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [allRestaurants, setAllRestaurants] = useState<Restaurant[][]>([])
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -244,18 +249,28 @@ export default function RecommendationsPage() {
     }
   }
 
-  const searchRecommendation = async (query: string) => {
-    setLoading(true)
+  const searchRecommendation = async (query: string, pageToken?: string) => {
+    if (pageToken) {
+      setLoadingMore(true)
+    } else {
+      setLoading(true)
+      setAllRestaurants([])
+      setCurrentPage(1)
+    }
     setSelectedRecommendation(query)
 
     try {
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject)
-      })
+      let location = userLocation
 
-      const location = {
-        lat: position.coords.latitude,
-        lng: position.coords.longitude,
+      if (!location) {
+        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject)
+        })
+        location = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        }
+        setUserLocation(location)
       }
 
       const response = await fetch("/api/search-restaurants", {
@@ -265,33 +280,60 @@ export default function RecommendationsPage() {
           foodName: query,
           location,
           radius: 5000,
+          pageSize: 15,
+          pageToken,
         }),
       })
 
       const data = await response.json()
 
       if (data.success && data.restaurants) {
-        setRestaurants(data.restaurants)
+        const newRestaurants = data.restaurants
+        
+        if (pageToken) {
+          setAllRestaurants(prev => [...prev, newRestaurants])
+          setCurrentPage(prev => prev + 1)
+        } else {
+          setAllRestaurants([newRestaurants])
+          setCurrentPage(1)
+        }
+        
+        setRestaurants(newRestaurants)
+        setNextPageToken(data.nextPageToken || null)
       } else {
         setRestaurants([])
       }
     } catch (error) {
       console.error("Error searching recommendation:", error)
       try {
+        const fallbackLocation = { lat: 53.3498, lng: -6.2603 }
         const response = await fetch("/api/search-restaurants", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             foodName: query,
-            location: { lat: 53.3498, lng: -6.2603 },
+            location: fallbackLocation,
             radius: 5000,
+            pageSize: 15,
+            pageToken,
           }),
         })
 
         const data = await response.json()
 
         if (data.success && data.restaurants) {
-          setRestaurants(data.restaurants)
+          const newRestaurants = data.restaurants
+          
+          if (pageToken) {
+            setAllRestaurants(prev => [...prev, newRestaurants])
+            setCurrentPage(prev => prev + 1)
+          } else {
+            setAllRestaurants([newRestaurants])
+            setCurrentPage(1)
+          }
+          
+          setRestaurants(newRestaurants)
+          setNextPageToken(data.nextPageToken || null)
         } else {
           setRestaurants([])
         }
@@ -301,6 +343,21 @@ export default function RecommendationsPage() {
       }
     } finally {
       setLoading(false)
+      setLoadingMore(false)
+    }
+  }
+
+  const handleNextPage = () => {
+    if (nextPageToken && selectedRecommendation) {
+      searchRecommendation(selectedRecommendation, nextPageToken)
+    }
+  }
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      const prevPageIndex = currentPage - 2
+      setRestaurants(allRestaurants[prevPageIndex] || [])
+      setCurrentPage(prev => prev - 1)
     }
   }
 
@@ -622,6 +679,55 @@ export default function RecommendationsPage() {
               </h2>
             </div>
             <RestaurantList restaurants={restaurants} foodName={selectedRecommendation || ""} />
+            
+            {/* Pagination Controls */}
+            <div className="mt-8 flex items-center justify-center gap-4">
+              <button
+                onClick={handlePrevPage}
+                disabled={currentPage === 1}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all duration-300 ${
+                  currentPage === 1
+                    ? 'bg-secondary/30 text-muted-foreground cursor-not-allowed'
+                    : 'glass glass-border hover:bg-primary/10 text-foreground'
+                }`}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                Previous
+              </button>
+              
+              <div className="px-4 py-2 glass glass-border rounded-xl">
+                <span className="text-foreground font-medium">Page {currentPage}</span>
+              </div>
+              
+              <button
+                onClick={handleNextPage}
+                disabled={!nextPageToken || loadingMore}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all duration-300 ${
+                  !nextPageToken || loadingMore
+                    ? 'bg-secondary/30 text-muted-foreground cursor-not-allowed'
+                    : 'glass glass-border hover:bg-primary/10 text-foreground'
+                }`}
+              >
+                {loadingMore ? (
+                  <>
+                    <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    Loading...
+                  </>
+                ) : (
+                  <>
+                    Next
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         ) : selectedRecommendation ? (
           <div className="glass glass-border rounded-3xl p-12 text-center animate-fade-in-up">

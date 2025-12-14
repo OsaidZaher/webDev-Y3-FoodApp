@@ -338,14 +338,29 @@ export default function RestaurantModal({ placeId, isOpen, onClose }: Restaurant
                       Location
                     </h4>
                     <div className="rounded-2xl overflow-hidden border border-white/[0.08]">
-                      <iframe
-                        width="100%"
-                        height="250"
-                        style={{ border: 0 }}
-                        loading="lazy"
-                        src={`https://www.google.com/maps/embed/v1/place?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&q=place_id:${placeId}&zoom=15`}
-                        allowFullScreen
-                      ></iframe>
+                      {process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ? (
+                        <iframe
+                          width="100%"
+                          height="250"
+                          style={{ border: 0 }}
+                          loading="lazy"
+                          src={`https://www.google.com/maps/embed/v1/place?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&q=place_id:${placeId}&zoom=15`}
+                          allowFullScreen
+                        ></iframe>
+                      ) : (
+                        <a
+                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(details.address)}&query_place_id=${placeId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block w-full h-[250px] bg-white/[0.03] hover:bg-white/[0.06] transition-colors flex items-center justify-center"
+                        >
+                          <div className="text-center">
+                            <MapPinIcon className="w-12 h-12 text-violet-400 mx-auto mb-3" />
+                            <p className="text-white font-medium">View on Google Maps</p>
+                            <p className="text-white/50 text-sm mt-1">{details.address}</p>
+                          </div>
+                        </a>
+                      )}
                     </div>
                   </div>
                 )}

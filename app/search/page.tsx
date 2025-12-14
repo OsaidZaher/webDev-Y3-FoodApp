@@ -7,17 +7,21 @@ import FoodInput from '@/app/components/FoodInput';
 import RestaurantList from '@/app/components/RestaurantList';
 import { FoodRecognitionResult, Restaurant, UserLocation } from '@/types';
 import { saveClassification } from '@/lib/history';
-import { Search, MapPin, AlertCircle, Loader2, Frown, Sparkles, History } from 'lucide-react';
+import { Search, MapPin, AlertCircle, Loader2, Frown, Sparkles, History, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function SearchPage() {
   const { data: session } = useSession();
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [currentFood, setCurrentFood] = useState<string>('');
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [lastImagePreview, setLastImagePreview] = useState<string | null>(null);
+  const [nextPageToken, setNextPageToken] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [allRestaurants, setAllRestaurants] = useState<Restaurant[][]>([]);
 
   useEffect(() => {
     getUserLocation();
@@ -47,13 +51,19 @@ export default function SearchPage() {
     );
   };
 
-  const searchRestaurants = async (foodName: string) => {
+  const searchRestaurants = async (foodName: string, pageToken?: string) => {
     if (!userLocation) {
       setError('Location not available. Please allow location access.');
       return;
     }
 
-    setIsLoading(true);
+    if (pageToken) {
+      setIsLoadingMore(true);
+    } else {
+      setIsLoading(true);
+      setAllRestaurants([]);
+      setCurrentPage(1);
+    }
     setError(null);
     setCurrentFood(foodName);
 
@@ -67,6 +77,8 @@ export default function SearchPage() {
           foodName,
           location: userLocation,
           radius: 5000,
+          pageSize: 15,
+          pageToken,
         }),
       });
 
@@ -80,12 +92,40 @@ export default function SearchPage() {
         throw new Error(data.error || 'Failed to search restaurants');
       }
 
-      setRestaurants(data.restaurants || []);
+      const newRestaurants = data.restaurants || [];
+      
+      if (pageToken) {
+        // Add new page to allRestaurants
+        setAllRestaurants(prev => [...prev, newRestaurants]);
+        setCurrentPage(prev => prev + 1);
+      } else {
+        // First page
+        setAllRestaurants([newRestaurants]);
+        setCurrentPage(1);
+      }
+      
+      setRestaurants(newRestaurants);
+      setNextPageToken(data.nextPageToken || null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error searching restaurants');
       setRestaurants([]);
     } finally {
       setIsLoading(false);
+      setIsLoadingMore(false);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (nextPageToken && currentFood) {
+      searchRestaurants(currentFood, nextPageToken);
+    }
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      const prevPageIndex = currentPage - 2;
+      setRestaurants(allRestaurants[prevPageIndex] || []);
+      setCurrentPage(prev => prev - 1);
     }
   };
 
@@ -205,7 +245,49 @@ export default function SearchPage() {
         )}
 
         {!isLoading && currentFood && restaurants.length > 0 && (
-          <RestaurantList restaurants={restaurants} foodName={currentFood} />
+          <>
+            <RestaurantList restaurants={restaurants} foodName={currentFood} />
+            
+            {/* Pagination Controls */}
+            <div className="mt-8 flex items-center justify-center gap-4">
+              <button
+                onClick={handlePrevPage}
+                disabled={currentPage === 1}
+                className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-700 dark:text-slate-300 font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                Previous
+              </button>
+              
+              <span className="px-4 py-2 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-xl font-semibold">
+                Page {currentPage}
+              </span>
+              
+              <button
+                onClick={handleNextPage}
+                disabled={!nextPageToken || isLoadingMore}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {isLoadingMore ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Loading...
+                  </>
+                ) : (
+                  <>
+                    Next
+                    <ChevronRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+            </div>
+            
+            {!nextPageToken && currentPage > 0 && (
+              <p className="text-center text-slate-500 dark:text-slate-400 mt-4 text-sm">
+                No more results available
+              </p>
+            )}
+          </>
         )}
 
         {!isLoading && currentFood && restaurants.length === 0 && !error && (
