@@ -3,6 +3,7 @@
 import { useSession, signOut } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
+import { getUserPreferences, setLocationEnabled, setHistoryEnabled } from "@/lib/preferences"
 
 // Inline SVG Icons
 const UserIcon = ({ className }: { className?: string }) => (
@@ -31,16 +32,6 @@ const ShieldCheckIcon = ({ className }: { className?: string }) => (
       strokeLinecap="round"
       strokeLinejoin="round"
       d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-    />
-  </svg>
-)
-
-const BellIcon = ({ className }: { className?: string }) => (
-  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
     />
   </svg>
 )
@@ -134,15 +125,37 @@ function ToggleSwitch({ enabled, onChange }: { enabled: boolean; onChange: (valu
 export default function AccountPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
-  const [notifications, setNotifications] = useState(true)
   const [location, setLocation] = useState(true)
   const [history, setHistory] = useState(true)
+  const [prefsLoaded, setPrefsLoaded] = useState(false)
 
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login")
     }
   }, [status, router])
+
+  // Load preferences from localStorage
+  useEffect(() => {
+    if (session?.user?.id) {
+      const prefs = getUserPreferences(session.user.id)
+      setLocation(prefs.locationEnabled)
+      setHistory(prefs.historyEnabled)
+      setPrefsLoaded(true)
+    }
+  }, [session?.user?.id])
+
+  // Handler for location preference change
+  const handleLocationChange = (enabled: boolean) => {
+    setLocation(enabled)
+    setLocationEnabled(enabled, session?.user?.id)
+  }
+
+  // Handler for history preference change
+  const handleHistoryChange = (enabled: boolean) => {
+    setHistory(enabled)
+    setHistoryEnabled(enabled, session?.user?.id)
+  }
 
   const handleSignOut = async () => {
     await signOut({ callbackUrl: "/" })
@@ -291,20 +304,6 @@ export default function AccountPage() {
             </h3>
 
             <div className="space-y-1">
-              {/* Email Notifications */}
-              <div className="flex items-center justify-between py-4 px-4 rounded-xl hover:bg-white/[0.02] transition-colors duration-200 -mx-4">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-violet-500/10 flex items-center justify-center">
-                    <BellIcon className="w-5 h-5 text-violet-400" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-white text-sm md:text-base">Email Notifications</p>
-                    <p className="text-xs md:text-sm text-zinc-500">Receive updates about new restaurants</p>
-                  </div>
-                </div>
-                <ToggleSwitch enabled={notifications} onChange={setNotifications} />
-              </div>
-
               {/* Location Services */}
               <div className="flex items-center justify-between py-4 px-4 rounded-xl hover:bg-white/[0.02] transition-colors duration-200 -mx-4">
                 <div className="flex items-center gap-4">
@@ -313,10 +312,10 @@ export default function AccountPage() {
                   </div>
                   <div>
                     <p className="font-medium text-white text-sm md:text-base">Location Services</p>
-                    <p className="text-xs md:text-sm text-zinc-500">Use my location for better results</p>
+                    <p className="text-xs md:text-sm text-zinc-500">Use my location for nearby restaurant search</p>
                   </div>
                 </div>
-                <ToggleSwitch enabled={location} onChange={setLocation} />
+                <ToggleSwitch enabled={location} onChange={handleLocationChange} />
               </div>
 
               {/* Save History */}
@@ -327,10 +326,10 @@ export default function AccountPage() {
                   </div>
                   <div>
                     <p className="font-medium text-white text-sm md:text-base">Save Search History</p>
-                    <p className="text-xs md:text-sm text-zinc-500">Keep track of your searches</p>
+                    <p className="text-xs md:text-sm text-zinc-500">Track your food searches and viewed restaurants</p>
                   </div>
                 </div>
-                <ToggleSwitch enabled={history} onChange={setHistory} />
+                <ToggleSwitch enabled={history} onChange={handleHistoryChange} />
               </div>
             </div>
           </div>

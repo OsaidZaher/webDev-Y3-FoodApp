@@ -13,6 +13,7 @@ import {
   type FoodClassification,
   type ViewedRestaurant,
 } from "@/lib/history"
+import { getUserPreferences } from "@/lib/preferences"
 
 // Inline SVG Icons as components
 const HistoryIcon = ({ className }: { className?: string }) => (
@@ -196,6 +197,7 @@ export default function HistoryPage() {
   const [isClearing, setIsClearing] = useState(false)
   const [showClearModal, setShowClearModal] = useState(false)
   const [hoveredCard, setHoveredCard] = useState<string | null>(null)
+  const [historyEnabled, setHistoryEnabled] = useState(true)
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -205,7 +207,11 @@ export default function HistoryPage() {
 
   useEffect(() => {
     if (typeof window !== "undefined" && session?.user?.id) {
-      loadHistory()
+      const prefs = getUserPreferences(session.user.id)
+      setHistoryEnabled(prefs.historyEnabled)
+      if (prefs.historyEnabled) {
+        loadHistory()
+      }
     }
   }, [session?.user?.id])
 
@@ -328,13 +334,19 @@ export default function HistoryPage() {
               <div>
                 <h1 className="text-2xl font-bold tracking-tight text-foreground">History</h1>
                 <p className="text-sm text-muted-foreground">
-                  <span className="gradient-text font-semibold">{totalItems}</span>{" "}
-                  {totalItems === 1 ? "item" : "items"} in your collection
+                  {historyEnabled ? (
+                    <>
+                      <span className="gradient-text font-semibold">{totalItems}</span>{" "}
+                      {totalItems === 1 ? "item" : "items"} in your collection
+                    </>
+                  ) : (
+                    <span className="text-amber-500">History saving is disabled</span>
+                  )}
                 </p>
               </div>
             </div>
 
-            {totalItems > 0 && (
+            {historyEnabled && totalItems > 0 && (
               <button
                 onClick={() => setShowClearModal(true)}
                 className="group flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-muted-foreground hover:text-destructive rounded-xl hover:bg-destructive/10 border border-transparent hover:border-destructive/20 transition-all duration-300"
@@ -348,6 +360,32 @@ export default function HistoryPage() {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative">
+        {/* History Disabled Message */}
+        {!historyEnabled && (
+          <div className="glass glass-border rounded-3xl p-12 text-center">
+            <div className="relative inline-flex mb-6">
+              <div className="absolute inset-0 bg-gradient-to-br from-amber-500/20 to-orange-500/20 rounded-full blur-xl" />
+              <div className="relative w-20 h-20 rounded-full bg-gradient-to-br from-amber-500/10 to-orange-500/10 flex items-center justify-center border border-amber-500/20">
+                <HistoryIcon className="w-10 h-10 text-amber-500" />
+              </div>
+            </div>
+            <h2 className="text-2xl font-bold text-foreground mb-3">History is Disabled</h2>
+            <p className="text-muted-foreground max-w-md mx-auto mb-6">
+              You have disabled search history saving in your account settings. 
+              Enable it to start tracking your food searches and restaurant views.
+            </p>
+            <button
+              onClick={() => router.push("/account")}
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-primary to-pink-500 text-white font-medium hover:opacity-90 transition-opacity"
+            >
+              Go to Account Settings
+              <ChevronRightIcon className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        {historyEnabled && (
+          <>
         {/* Tab Navigation */}
         <div className="relative mb-8">
           <div className="flex gap-2 p-1.5 glass glass-border rounded-2xl">
@@ -422,6 +460,8 @@ export default function HistoryPage() {
               ))
             )}
           </div>
+        )}
+          </>
         )}
       </main>
 
@@ -541,10 +581,10 @@ function ClassificationCard({
                   <div className="w-28 h-2 bg-secondary rounded-full overflow-hidden">
                     <div
                       className="h-full bg-gradient-to-r from-primary to-pink-500 rounded-full transition-all duration-700 ease-out"
-                      style={{ width: `${item.confidence * 100}%` }}
+                      style={{ width: `${Math.min(item.confidence * 100, 100)}%` }}
                     />
                   </div>
-                  <span className="text-xs font-bold text-primary">{(item.confidence * 100).toFixed(0)}% match</span>
+                  <span className="text-xs font-bold text-primary">{Math.min(Math.round(item.confidence * 100), 100)}% match</span>
                 </div>
               )}
             </div>

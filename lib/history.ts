@@ -48,6 +48,10 @@ export function saveClassification(
     const history = getClassificationHistory(userId);
     const newItem: FoodClassification = {
       ...classification,
+      // Clamp confidence to 0-1 range to prevent display issues
+      confidence: classification.confidence !== undefined 
+        ? Math.min(Math.max(classification.confidence, 0), 1) 
+        : undefined,
       id: `classification-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       timestamp: Date.now(),
     };

@@ -7,7 +7,8 @@ import FoodInput from '@/app/components/FoodInput';
 import RestaurantList from '@/app/components/RestaurantList';
 import { FoodRecognitionResult, Restaurant, UserLocation } from '@/types';
 import { saveClassification } from '@/lib/history';
-import { Search, MapPin, AlertCircle, Loader2, Frown, Sparkles, History, ChevronLeft, ChevronRight } from 'lucide-react';
+import { getUserPreferences } from '@/lib/preferences';
+import { Search, MapPin, AlertCircle, Loader2, Frown, Sparkles, History, ChevronLeft, ChevronRight, MapPinOff } from 'lucide-react';
 
 export default function SearchPage() {
   const { data: session } = useSession();
@@ -22,10 +23,28 @@ export default function SearchPage() {
   const [nextPageToken, setNextPageToken] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [allRestaurants, setAllRestaurants] = useState<Restaurant[][]>([]);
+  const [locationEnabled, setLocationEnabled] = useState(true);
+  const [historyEnabled, setHistoryEnabled] = useState(true);
+
+  // Load preferences
+  useEffect(() => {
+    if (session?.user?.id) {
+      const prefs = getUserPreferences(session.user.id);
+      setLocationEnabled(prefs.locationEnabled);
+      setHistoryEnabled(prefs.historyEnabled);
+    }
+  }, [session?.user?.id]);
 
   useEffect(() => {
-    getUserLocation();
-  }, []);
+    // Only get location if enabled in preferences
+    if (locationEnabled) {
+      getUserLocation();
+    } else {
+      // Use default location (Dublin, Ireland) when location is disabled
+      setUserLocation({ lat: 53.3498, lng: -6.2603 });
+      setLocationError('Location disabled. Using default location (Dublin).');
+    }
+  }, [locationEnabled]);
 
   const getUserLocation = () => {
     if (!navigator.geolocation) {
@@ -131,8 +150,8 @@ export default function SearchPage() {
 
   const handleFoodRecognized = (result: FoodRecognitionResult) => {
     if (result.success && result.foodName) {
-      // Save to history only if user is logged in
-      if (session?.user?.id) {
+      // Save to history only if user is logged in AND history is enabled
+      if (session?.user?.id && historyEnabled) {
         saveClassification({
           foodName: result.foodName,
           confidence: result.confidence,
@@ -148,8 +167,8 @@ export default function SearchPage() {
   };
 
   const handleManualInput = (foodName: string) => {
-    // Save manual input to history only if user is logged in
-    if (session?.user?.id) {
+    // Save manual input to history only if user is logged in AND history is enabled
+    if (session?.user?.id && historyEnabled) {
       saveClassification({
         foodName,
         confidence: 1.0,
